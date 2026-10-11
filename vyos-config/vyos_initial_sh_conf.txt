@@ -1,0 +1,209 @@
+firewall {
+    ipv4 {
+        forward {
+            filter {
+                rule 100 {
+                    action jump
+                    inbound-interface {
+                        name eth1
+                    }
+                    jump-target ISOLATE-DMZ
+                }
+                rule 110 {
+                    action jump
+                    jump-target MGMT-PROTECT
+                    outbound-interface {
+                        name eth3
+                    }
+                }
+            }
+        }
+        input {
+            filter {
+                rule 100 {
+                    action jump
+                    inbound-interface {
+                        name eth0
+                    }
+                    jump-target WAN-TO-LOCAL
+                }
+            }
+        }
+        name ISOLATE-DMZ {
+            default-action drop
+            description "Preventing pivoting from DMZ"
+            rule 10 {
+                action accept
+                state established
+                state related
+            }
+        }
+        name MGMT-PROTECT {
+            default-action drop
+            description "Blocking unauthorized access to MGMT Zon                                                                    e"
+            rule 10 {
+                action accept
+                state established
+                state related
+            }
+        }
+        name WAN-TO-LOCAL {
+            default-action drop
+            description "Protecting Edge-router from WAN attacks"
+            rule 10 {
+                action accept
+                state established
+                state related
+            }
+            rule 20 {
+                action accept
+                protocol icmp
+            }
+        }
+    }
+}
+interfaces {
+    ethernet eth0 {
+        address dhcp
+        description WAN-Zone
+        hw-id 50:00:00:01:00:00
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth1 {
+        address 10.0.1.1/24
+        description DMZ-Zone
+        hw-id 50:00:00:01:00:01
+        mirror {
+            egress eth4
+            ingress eth4
+        }
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth2 {
+        address 10.0.2.1/24
+        description LAN-Zone
+        hw-id 50:00:00:01:00:02
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth3 {
+        address 10.0.3.1/24
+        description MGMT-Zone
+        hw-id 50:00:00:01:00:03
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth4 {
+        hw-id 50:00:00:01:00:04
+    }
+    loopback lo {
+    }
+}
+nat {
+    source {
+        rule 10 {
+            destination {
+                address 192.168.85.0/24
+            }
+            exclude
+            outbound-interface {
+                name eth0
+            }
+        }
+        rule 100 {
+            outbound-interface {
+                name eth0
+            }
+            source {
+                address 10.0.0.0/16
+            }
+            translation {
+                address masquerade
+            }
+        }
+    }
+}
+protocols {
+    static {
+        route 0.0.0.0/0 {
+            next-hop 192.168.85.2 {
+            }
+        }
+    }
+}
+service {
+    ntp {
+        allow-client {
+            address 127.0.0.0/8
+            address 169.254.0.0/16
+            address 10.0.0.0/8
+            address 172.16.0.0/12
+            address 192.168.0.0/16
+            address ::1/128
+            address fe80::/10
+            address fc00::/7
+        }
+        server time1.vyos.net {
+        }
+        server time2.vyos.net {
+        }
+        server time3.vyos.net {
+        }
+    }
+}
+system {
+    config-management {
+        commit-revisions 100
+    }
+    console {
+        device ttyS0 {
+            kernel
+            speed 115200
+        }
+    }
+    host-name vyos
+    login {
+        operator-group default {
+            command-policy {
+                allow "*"
+            }
+        }
+        user vyos {
+            authentication {
+                encrypted-password ****************
+                plaintext-password ****************
+            }
+        }
+    }
+    option {
+        reboot-on-upgrade-failure 5
+    }
+    syslog {
+        local {
+            facility all {
+                level info
+            }
+            facility local7 {
+                level debug
+            }
+        }
+    }
+}
