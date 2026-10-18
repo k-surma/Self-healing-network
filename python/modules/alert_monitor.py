@@ -8,10 +8,10 @@ def tail_eve_json(log_path, poll_interval):
     Odfiltrowuje statystyki i zwraca wyłącznie zdarzenia typu 'alert'.
     """
     if not os.path.exists(log_path):
-        print(f"[!] Błąd: Plik logów {log_path} nie istnieje.")
+        print(f"[!] Error: Log file {log_path} does not exist.")
         return
 
-    print(f"[*] Uruchomiono nasłuch warstwy detekcji: {log_path}")
+    print(f"[*] Started listening: {log_path}")
     
     with open(log_path, 'r') as file:
         # Przesunięcie wskaźnika na koniec pliku - czytamy tylko nowe zdarzenia
