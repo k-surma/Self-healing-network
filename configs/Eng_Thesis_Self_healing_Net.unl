@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<lab name="Eng_Thesis_Self_healing_Net" id="77d68bd5-91e4-4a37-b113-6214b8ebdda2" version="1" scripttimeout="300" lock="0">
+  <description>https://docs.google.com/document/d/1k7gWaY-0ceYpFAAg2yxAuNHCWPWo3_gpKxtx2KSwQ9s/edit?tab=t.0</description>
+  <topology>
+    <nodes>
+      <node id="1" name="VyOS" type="qemu" template="vyos" image="vyos-2026.06.30-0048-rolling-generic-amd64" console="telnet" cpu="1" cpulimit="0" ram="512" ethernet="5" uuid="a5d9e897-6216-495f-9905-5869e9075a73" qemu_options="-machine type=pc-1.0,accel=kvm -serial mon:stdio -nographic -no-user-config -nodefaults -rtc base=utc" qemu_version="2.4.0" qemu_arch="x86_64" qemu_nic="e1000" delay="0" icon="Router-3D-Gen1-S.svg" config="0" left="648" top="300">
+        <interface id="0" name="eth0" type="ethernet" network_id="1"/>
+        <interface id="1" name="eth1" type="ethernet" network_id="4"/>
+        <interface id="2" name="eth2" type="ethernet" network_id="3"/>
+        <interface id="3" name="eth3" type="ethernet" network_id="2"/>
+        <interface id="4" name="eth4" type="ethernet" network_id="5"/>
+      </node>
+      <node id="4" name="Attacker-Kali" type="qemu" template="linux" image="linux-kali-2026.2" console="vnc" cpu="2" cpulimit="0" ram="4096" ethernet="1" uuid="d7ce9edf-9102-48da-850a-77c091161d87" firstmac="00:50:00:00:04:00" qemu_options="-machine type=pc,accel=kvm -vga std -usbdevice tablet -boot order=cd -cpu host" qemu_version="2.4.0" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Server_Linux.png" config="0" left="650" top="30">
+        <interface id="0" name="e0" type="ethernet" network_id="1"/>
+      </node>
+      <node id="2" name="Victim-Ubuntu-Srv" type="qemu" template="linux" image="linux-ubuntu-22.04-server" console="telnet" cpu="1" cpulimit="0" ram="1024" ethernet="1" uuid="ebb83dfe-c384-4df3-992e-9d4289c3aa4c" firstmac="00:50:00:00:02:00" qemu_options="-machine type=pc,accel=kvm -vga std -usbdevice tablet -boot order=cd -cpu host" qemu_version="2.4.0" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Server_Linux.png" config="0" left="891" top="546">
+        <interface id="0" name="e0" type="ethernet" network_id="4"/>
+      </node>
+      <node id="3" name="SOC_Srv_Ubuntu" type="qemu" template="linux" image="linux-ubuntu-22.04-server" console="telnet" cpu="4" cpulimit="0" ram="4096" ethernet="2" uuid="53f47046-da6f-4beb-a104-e187c069519d" firstmac="00:50:00:00:03:00" qemu_options="-machine type=pc,accel=kvm -vga std -usbdevice tablet -boot order=cd -cpu host" qemu_version="2.4.0" qemu_arch="x86_64" qemu_nic="virtio-net-pci" delay="0" icon="Server_Linux.png" config="0" left="450" top="540">
+        <interface id="0" name="e0" type="ethernet" network_id="2"/>
+        <interface id="1" name="e1" type="ethernet" network_id="5"/>
+      </node>
+    </nodes>
+    <networks>
+      <network id="1" type="pnet0" name="WAN" left="648" top="159" visibility="1" icon="01-Cloud-Default.svg"/>
+      <network id="2" type="bridge" name="MGMT" left="450" top="400" visibility="1" icon="Switch-3D-L2-S.svg"/>
+      <network id="3" type="bridge" name="LAN" left="650" top="440" visibility="1" icon="Switch-3D-L2-S.svg"/>
+      <network id="4" type="bridge" name="DMZ" left="900" top="400" visibility="1" icon="Switch-3D-L2-S.svg"/>
+      <network id="5" type="bridge" name="Net-SOC_Srv_Ubuntuiface_1" left="550" top="244" visibility="0" icon="lan.png"/>
+    </networks>
+  </topology>
+</lab>
