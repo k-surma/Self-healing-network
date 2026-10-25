@@ -9,4 +9,4 @@
           - set firewall group address-group BLOCKED_IPS address '{{ target_ip }}'
           - set firewall ipv4 forward filter rule 5 action 'drop'
           - set firewall ipv4 forward filter rule 5 source group address-group 'BLOCKED_IPS'
-        save: yes
+        save: no

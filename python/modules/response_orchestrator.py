@@ -23,7 +23,7 @@ def trigger_response(incident_data):
     # Wywołanie Ansible
     try:
         print("[*] Executing Ansible Playbook...")
-        subprocess.run(["ansible-playbook", "../ansible/block_ip.yml", "-e", f"target_ip={attacker_ip}"], check=True)
+        subprocess.run(["ansible-playbook", "-i", "/home/user/self-healing-network/ansible/inventory.ini", "/home/user/self-healing-network/ansible/block_ip.yml", "-e", f"target_ip={attacker_ip}"], check=True)
         print(f"[+] SUCCESS: Mitigation playbook triggered for {attacker_ip}")
     except subprocess.CalledProcessError as e:
         print(f"[!] ERROR: Ansible execution failed - {e}")
