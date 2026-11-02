@@ -1,29 +1,109 @@
+import json
+import ipaddress
 import subprocess
 from datetime import datetime
+from pathlib import Path
+
+import config
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ANSIBLE_DIR = PROJECT_ROOT / 'ansible'
+PLAYBOOKS = {
+    'Vector 1: Brute-Force / Credential Access': (
+        'block_ip.yml',
+        'BLOCK_IP',
+    ),
+    'Vector 2: Reconnaissance / Scanning': (
+        'block_ip.yml',
+        'BLOCK_IP',
+    ),
+    'Vector 3: Volumetric DoS': (
+        'rate_limit.yml',
+        'RATE_LIMIT',
+    ),
+}
+
+
+def _write_audit_event(message):
+    audit_msg = f"[{datetime.now().isoformat()}] {message}\n"
+    try:
+        with open(config.AUDIT_LOG_PATH, 'a', encoding='utf-8') as log_file:
+            log_file.write(audit_msg)
+    except OSError as error:
+        print(f"[!] Audit log write failed: {error}")
+
 
 def trigger_response(incident_data):
     """
-    Zapisuje incydent do logu audytowego i wyzwala playbook Ansible
-    w celu mitygacji zagrożenia na routerze VyOS.
+    Wybiera playbook Ansible odpowiedni dla wektora i zapisuje wynik reakcji.
     """
     attacker_ip = incident_data.get('attacker_ip')
     vector = incident_data.get('vector')
-    
-    if attacker_ip == 'Unknown':
-        print("[!] Invalid IP. Aborting mitigation.")
+
+    try:
+        attacker_ip = str(ipaddress.IPv4Address(attacker_ip))
+    except (ipaddress.AddressValueError, TypeError):
+        print(f"[!] Invalid IPv4 address {attacker_ip!r}. Aborting mitigation.")
         return
 
-    # Zapis trwałego śladu audytowego
-    audit_msg = f"[{datetime.now().isoformat()}] BLOCKED IP: {attacker_ip} | VECTOR: {vector}\n"
-    with open("/var/log/self-healing-audit.log", "a") as log_file:
-        log_file.write(audit_msg)
-        
-    print(f"[*] Audit log saved. Initiating mitigation for: {attacker_ip}")
+    playbook_config = PLAYBOOKS.get(vector)
+    if playbook_config is None:
+        print(f"[!] No mitigation configured for vector {vector!r}.")
+        return
 
-    # Wywołanie Ansible
+    playbook_name, action = playbook_config
+    playbook_path = ANSIBLE_DIR / playbook_name
+    if action == 'BLOCK_IP':
+        extra_vars = {'target_ip': attacker_ip}
+    else:
+        extra_vars = {
+            'attacker_ip': attacker_ip,
+            'protected_ip': config.PROTECTED_HOST_IP,
+            'rate_limit_interface': config.RATE_LIMIT_INTERFACE,
+            'rate_limit_bandwidth': config.RATE_LIMIT_BANDWIDTH,
+            'rate_limit_burst': config.RATE_LIMIT_BURST,
+            'rate_limit_default_bandwidth': config.RATE_LIMIT_DEFAULT_BANDWIDTH,
+        }
+
+    destination = ''
+    destination_display = ''
+    if action == 'RATE_LIMIT':
+        destination = f" DESTINATION={config.PROTECTED_HOST_IP}"
+        destination_display = f" -> {config.PROTECTED_HOST_IP}"
+    print(
+        f"[*] Initiating {action} mitigation for {attacker_ip}"
+        f"{destination_display} ({vector})."
+    )
+    _write_audit_event(
+        f"ACTION={action} STATUS=STARTED SOURCE={attacker_ip}"
+        f"{destination} VECTOR={vector}"
+    )
     try:
-        print("[*] Executing Ansible Playbook...")
-        subprocess.run(["ansible-playbook", "-i", "/home/user/self-healing-network/ansible/inventory.ini", "/home/user/self-healing-network/ansible/block_ip.yml", "-e", f"target_ip={attacker_ip}"], check=True)
-        print(f"[+] SUCCESS: Mitigation playbook triggered for {attacker_ip}")
-    except subprocess.CalledProcessError as e:
-        print(f"[!] ERROR: Ansible execution failed - {e}")
+        subprocess.run(
+            [
+                'ansible-playbook',
+                '-i',
+                str(ANSIBLE_DIR / 'inventory.ini'),
+                str(playbook_path),
+                '-e',
+                json.dumps(extra_vars),
+            ],
+            check=True,
+        )
+    except (subprocess.CalledProcessError, OSError) as error:
+        print(f"[!] Ansible execution failed for {action}: {error}")
+        _write_audit_event(
+            f"ACTION={action} STATUS=FAILED SOURCE={attacker_ip} "
+            f"{destination} VECTOR={vector} ERROR={error}"
+        )
+        return
+
+    print(
+        f"[+] SUCCESS: {action} mitigation applied to {attacker_ip}"
+        f"{destination_display}."
+    )
+    _write_audit_event(
+        f"ACTION={action} STATUS=SUCCESS SOURCE={attacker_ip}"
+        f"{destination} VECTOR={vector}"
+    )
