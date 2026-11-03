@@ -1,15 +1,10 @@
 import json
 import ipaddress
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import config
-
-# Pamięć podręczna dla deduplikacji (cooldown)
-_mitigation_history = {}
-# Liczba sekund, przez które ignorujemy kolejne alerty dla tego samego IP/Wektora
-COOLDOWN_SECONDS = 60
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ANSIBLE_DIR = PROJECT_ROOT / 'ansible'
@@ -28,6 +23,9 @@ PLAYBOOKS = {
     ),
 }
 
+# Pamięć podręczna dla deduplikacji (cooldown)
+_mitigation_history = {}
+COOLDOWN_SECONDS = 60
 
 def _write_audit_event(message):
     audit_msg = f"[{datetime.now().isoformat()}] {message}\n"
@@ -37,6 +35,24 @@ def _write_audit_event(message):
     except OSError as error:
         print(f"[!] Audit log write failed: {error}")
 
+def calculate_ttm(alert_timestamp_str):
+    """
+    Oblicza Time-to-Mitigate (TTM) w sekundach.
+    Porównuje czas wygenerowania alertu przez IDS z aktualnym czasem systemowym (po mitygacji).
+    """
+    if not alert_timestamp_str or alert_timestamp_str == 'Unknown':
+        return None
+    try:
+        # Format daty Suricaty: np. 2026-11-02T13:55:04.123456+0100
+        alert_time = datetime.strptime(alert_timestamp_str, "%Y-%m-%dT%H:%M:%S.%f%z")
+        current_time = datetime.now(timezone.utc)
+        ttm = (current_time - alert_time).total_seconds()
+        
+        # Jeśli różnica wyjdzie delikatnie ujemna (ułamki sekund) przez opóźnienia wielowątkowe
+        return max(round(ttm, 2), 0.01)
+    except ValueError as e:
+        print(f"[!] Warning: TTM calculation error: {e}")
+        return None
 
 def trigger_response(incident_data):
     """
@@ -45,18 +61,18 @@ def trigger_response(incident_data):
     attacker_ip = incident_data.get('attacker_ip')
     vector = incident_data.get('vector')
 
-   # INŻYNIERIA: Deduplikacja alertów (Cooldown)
+    # INŻYNIERIA: Deduplikacja alertów (Cooldown)
     mitigation_key = f"{attacker_ip}-{vector}"
-    current_time = datetime.now().timestamp()
+    current_timestamp = datetime.now().timestamp()
     
     if mitigation_key in _mitigation_history:
         last_triggered = _mitigation_history[mitigation_key]
-        if (current_time - last_triggered) < COOLDOWN_SECONDS:
+        if (current_timestamp - last_triggered) < COOLDOWN_SECONDS:
             print(f"[-] Skipped mitigation for {attacker_ip} ({vector}) - inside cooldown window.")
             return
 
-    # aktualizacja czasu ostatniego uruchomienia dla tego klucza
-    _mitigation_history[mitigation_key] = current_time
+    # Zaktualizuj czas ostatniego uruchomienia
+    _mitigation_history[mitigation_key] = current_timestamp
 
     try:
         attacker_ip = str(ipaddress.IPv4Address(attacker_ip))
@@ -71,6 +87,7 @@ def trigger_response(incident_data):
 
     playbook_name, action = playbook_config
     playbook_path = ANSIBLE_DIR / playbook_name
+    
     if action == 'BLOCK_IP':
         extra_vars = {'target_ip': attacker_ip}
     else:
@@ -88,6 +105,7 @@ def trigger_response(incident_data):
     if action == 'RATE_LIMIT':
         destination = f" DESTINATION={config.PROTECTED_HOST_IP}"
         destination_display = f" -> {config.PROTECTED_HOST_IP}"
+        
     print(
         f"[*] Initiating {action} mitigation for {attacker_ip}"
         f"{destination_display} ({vector})."
@@ -96,6 +114,7 @@ def trigger_response(incident_data):
         f"ACTION={action} STATUS=STARTED SOURCE={attacker_ip}"
         f"{destination} VECTOR={vector}"
     )
+    
     try:
         subprocess.run(
             [
@@ -116,11 +135,15 @@ def trigger_response(incident_data):
         )
         return
 
+    # OBLICZANIE TTM PO UDANEJ MITYGACJI
+    ttm = calculate_ttm(incident_data.get('timestamp'))
+    ttm_info = f" [TTM: {ttm}s]" if ttm is not None else ""
+
     print(
         f"[+] SUCCESS: {action} mitigation applied to {attacker_ip}"
-        f"{destination_display}."
+        f"{destination_display}.{ttm_info}"
     )
     _write_audit_event(
         f"ACTION={action} STATUS=SUCCESS SOURCE={attacker_ip}"
-        f"{destination} VECTOR={vector}"
+        f"{destination} VECTOR={vector} TTM={ttm}"
     )
