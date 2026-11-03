@@ -12,3 +12,5 @@
           - set qos policy limiter DOS-INGRESS class 10 match ATTACK-FLOW ip destination address '{{ protected_ip }}'
           - set qos interface {{ rate_limit_interface }} ingress 'DOS-INGRESS'
         save: no
+      async: 120
+      poll: 0

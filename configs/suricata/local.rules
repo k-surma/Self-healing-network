@@ -1,0 +1,8 @@
+# Wektor 1: Brute-Force / Credential Access (THC-Hydra na port 22)
+alert tcp any any -> 10.0.1.10 22 (msg:"TEST INZYNIERSKI - Potencjalny atak SSH Brute-Force"; flags:S; threshold: type both, track by_src, count 5, seconds 10; sid:1000001; rev:2;)
+
+# Wektor 2: Agresywny rekonesans i skanowanie (Nmap SYN Stealth)
+alert tcp any any -> 10.0.1.10 any (msg:"TEST INZYNIERSKI - Skanowanie sieci Nmap Reconnaissance"; flags:S; threshold: type both, track by_src, count 25, seconds 2; sid:1000002; rev:1;)
+
+# Wektor 3: Ataki objętościowe (hping3 SYN Flood z losowych adresow IP)
+alert tcp any any -> 10.0.1.10 any (msg:"TEST INZYNIERSKI - Volumetric DoS SYN Flood"; flags:S; threshold: type both, track by_dst, count 100, seconds 2; sid:1000003; rev:2;)
