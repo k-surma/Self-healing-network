@@ -3,13 +3,12 @@
   hosts: vyos
   gather_facts: false
   tasks:
-    - name: Ograniczenie ruchu od wskazanego atakujacego do chronionego hosta
+    - name: Ograniczenie ruchu wolumetrycznego do chronionego hosta
       vyos.vyos.vyos_config:
         lines:
-          - "set qos policy limiter DOS-INGRESS class 10 match ATTACK-FLOW ip source address '{{ attacker_ip }}'"
-          - "set qos policy limiter DOS-INGRESS class 10 match ATTACK-FLOW ip destination address '{{ protected_ip }}'"
-          - "set qos policy limiter DOS-INGRESS class 10 bandwidth '{{ rate_limit_bandwidth }}'"
-          - "set qos policy limiter DOS-INGRESS class 10 burst '{{ rate_limit_burst }}'"
-          - "set qos policy limiter DOS-INGRESS default bandwidth '{{ rate_limit_default_bandwidth }}'"
-          - "set interfaces ethernet {{ rate_limit_interface }} traffic-policy in DOS-INGRESS"
+          - set qos policy limiter DOS-INGRESS default bandwidth '{{ rate_limit_default_bandwidth }}'
+          - set qos policy limiter DOS-INGRESS class 10 bandwidth '{{ rate_limit_bandwidth }}'
+          - set qos policy limiter DOS-INGRESS class 10 burst '{{ rate_limit_burst }}'
+          - set qos policy limiter DOS-INGRESS class 10 match ATTACK-FLOW ip destination address '{{ protected_ip }}'
+          - set qos interface {{ rate_limit_interface }} ingress 'DOS-INGRESS'
         save: no

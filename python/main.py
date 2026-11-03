@@ -9,12 +9,16 @@ def main():
     
     try:
         for alert_event in alert_generator:
-            print("-" * 50)
-            print("[*] Raw alert detected! Processing...")
-            
             # Ekstrakcja i klasyfikacja
             incident_data = classify_incident(alert_event)
             
+            # INŻYNIERSKA REDUKCJA SZUMU: Odrzucamy wszystko, co nie pasuje do wektorów
+            if incident_data['vector'] == "Unknown Vector":
+                continue
+            
+            # Wypisujemy informacje w konsoli TYLKO dla znanych zagrożeń
+            print("-" * 50)
+            print("[*] Raw alert detected! Processing...")
             print(f"    Target IP: {incident_data['attacker_ip']}")
             print(f"    Signature: {incident_data['signature']}")
             print(f"    Vector:    {incident_data['vector']}")

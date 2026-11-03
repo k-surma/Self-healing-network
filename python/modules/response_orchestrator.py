@@ -6,6 +6,10 @@ from pathlib import Path
 
 import config
 
+# Pamięć podręczna dla deduplikacji (cooldown)
+_mitigation_history = {}
+# Liczba sekund, przez które ignorujemy kolejne alerty dla tego samego IP/Wektora
+COOLDOWN_SECONDS = 60
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ANSIBLE_DIR = PROJECT_ROOT / 'ansible'
@@ -40,6 +44,19 @@ def trigger_response(incident_data):
     """
     attacker_ip = incident_data.get('attacker_ip')
     vector = incident_data.get('vector')
+
+   # INŻYNIERIA: Deduplikacja alertów (Cooldown)
+    mitigation_key = f"{attacker_ip}-{vector}"
+    current_time = datetime.now().timestamp()
+    
+    if mitigation_key in _mitigation_history:
+        last_triggered = _mitigation_history[mitigation_key]
+        if (current_time - last_triggered) < COOLDOWN_SECONDS:
+            print(f"[-] Skipped mitigation for {attacker_ip} ({vector}) - inside cooldown window.")
+            return
+
+    # aktualizacja czasu ostatniego uruchomienia dla tego klucza
+    _mitigation_history[mitigation_key] = current_time
 
     try:
         attacker_ip = str(ipaddress.IPv4Address(attacker_ip))
