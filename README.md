@@ -117,9 +117,9 @@ interfejsie wyjściowym DMZ, próba zastosowania shaper na `eth1` powodowała
 konflikt `Cannot use QoS together with mirror!`. Wektor 3 korzysta zatem z
 limitera ingress na `eth0`, a nie z shaper na interfejsie wyjściowym.
 
-Konfiguracja bazowa nie zawiera pełnej konfiguracji Suricaty, jej reguł ani
-konfiguracji samego SPAN po stronie SOC — log wejściowy middleware i elementy
-routera opisano zgodnie z dostępnymi plikami projektu i stanem laboratorium.
+## Konfiguracja reguł Suiricaty
+Customowe rule użyte do testów znajdują się w folderze configs/suricata/ w pliku `local.rules`, 
+natomiast konieczna jest konfiguracja odpowiedniej ścieżki do pliku w przypadku testowania laboratorium.
 
 ## Ansible i dostęp do routera
 
