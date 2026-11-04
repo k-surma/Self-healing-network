@@ -3,9 +3,9 @@
 Projekt pracy inżynierskiej przedstawia mechanizm automatycznej detekcji i
 reakcji na wybrane zagrożenia sieciowe. Środowisko testowe działa w EVE-NG i
 łączy Suricatę, middleware napisany w Pythonie, Ansible oraz router VyOS.
-Repozytorium zawiera konfigurację początkową laboratorium, przetestowany PoC
-reakcji dla Wektorów 1 i 2 oraz implementację reakcji dla Wektora 3. Rzeczywiste
-wdrożenie i pomiary należy wykonywać wyłącznie w izolowanym środowisku testowym.
+Repozytorium zawiera konfigurację początkową laboratorium, implementację reakcji dla wektorów ataku oraz automatyczne przywracanie stanu początkowego. 
+
+Rzeczywiste wdrożenie i pomiary należy wykonywać wyłącznie w izolowanym środowisku testowym.
 
 ## Topologia laboratorium
 
@@ -16,7 +16,7 @@ wdrożenie i pomiary należy wykonywać wyłącznie w izolowanym środowisku tes
 | VyOS / DMZ (`eth1`) | `10.0.1.1/24` | Brama dla hosta chronionego |
 | Ubuntu / DMZ | `10.0.1.10` | Chroniony host |
 | VyOS / MGMT (`eth3`) | `10.0.3.1/24` | Brama zarządzająca |
-| Serwer SOC / MGMT | `10.0.3.50` | Suricata, logi i middleware |
+| Serwer SOC / MGMT | `10.0.3.100` | Suricata, logi i middleware |
 | VyOS / mirror (`eth4`) | bez adresu IP | Odbiornik kopii ruchu SPAN |
 
 Wartości adresów i nazwy interfejsów odpowiadają dostarczonemu opisowi
@@ -69,10 +69,6 @@ oraz akcję `drop`, a adres dodawany jest do grupy `BLOCKED_IPS`. Playbook
 wykorzystuje kolekcję `vyos.vyos` i ustawia `save: no`, aby nie zapisywać
 automatycznie konfiguracji na dysk po każdej reakcji.
 
-PoC tych dwóch reakcji został przetestowany w laboratorium według stanu
-projektu przekazanego przez autorkę. Trwałość po restarcie wymaga osobnego
-zapisu konfiguracji VyOS.
-
 ### Wektor 3 — ograniczanie przepływności
 
 `ansible/rate_limit.yml` tworzy klasę `10` polityki `DOS-INGRESS`. Klasa
@@ -101,13 +97,6 @@ incydencie konfiguracja klasy otrzymuje bieżący adres atakującego; playbook n
 utrzymuje osobnej klasy/limitu dla każdego wcześniejszego źródła. Konfiguracja
 playbooka używa `save: no`, tak jak reakcja blokująca.
 
-Przed właściwym pomiarem należy sprawdzić, czy używana wersja VyOS akceptuje
-konfigurację limiter, dopasowanie IP, jednostki burstu i `100%` dla klasy
-domyślnej. Potwierdź na routerze zastosowaną politykę i jej przypięcie do
-interfejsu WAN. Do pomiaru efektu obciążenie musi wyraźnie przekraczać `1 Mbps`;
-wcześniejszy pomiar bazowy około `1.6 Mbps` daje niewielki margines. Porównuj
-przepływność docierającą do DMZ i liczniki polityki, traktując pomiar SPAN na
-SOC jako obserwację ruchu skopiowanego w konkretnym punkcie toru.
 
 ## Konfiguracja VyOS i monitoring
 
@@ -158,7 +147,7 @@ Middleware uruchamia się z katalogu `python`, aby import `config` oraz modułó
 był dostępny:
 
 ```text
-python main.py
+python3 main.py
 ```
 
 Wymagane są: Python, dostęp do pliku EVE JSON i logu audytowego, polecenie
@@ -173,23 +162,3 @@ porównuj identyczne warunki przed oraz po reakcji. Automatyczna klasyfikacja
 zależy od treści sygnatury Suricaty, a chwilowe obciążenie widoczne na SOC może
 różnić się od przepływności przekazywanej do hosta chronionego.
 
-## Pliki projektu
-
-```text
-ansible/
-  block_ip.yml
-  rate_limit.yml
-  inventory.ini
-configs/
-  Eng_Thesis_Self_healing_Net.unl
-  vyos-config/
-    vyos_initial_config.txt
-    vyos_initial_sh_conf.txt
-python/
-  config.py
-  main.py
-  modules/
-    alert_monitor.py
-    incident_classifier.py
-    response_orchestrator.py
-```
