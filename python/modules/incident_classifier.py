@@ -21,10 +21,6 @@ def classify_incident(alert_event):
     elif "dos" in signature_lower or "flood" in signature_lower:
         attack_vector = "Vector 3: Volumetric DoS"
 
-    # Zmieniono: informacja logowana w konsoli tylko, jeśli wektor jest znany
-    if attack_vector != "Unknown Vector":
-        print(f"[+] Incident classified: {attack_vector} | Source: {src_ip}")
-
     return {
         'attacker_ip': src_ip,
         'timestamp': timestamp,

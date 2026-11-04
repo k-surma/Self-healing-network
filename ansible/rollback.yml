@@ -1,0 +1,17 @@
+---
+- name: Recovery - Przywracanie stanu poczatkowego routera (Teardown)
+  hosts: vyos
+  gather_facts: false
+  tasks:
+    - name: Usuniecie polityk bezpieczenstwa i QoS
+      vyos.vyos.vyos_config:
+        lines:
+          # Vector 3
+          - delete qos interface eth0 ingress
+          - delete qos policy limiter DOS-INGRESS
+          
+          # Vector 1 and 2
+          - delete firewall ipv4 forward filter rule 5
+          - delete firewall group address-group BLOCKED-IPS
+        save: no
+
