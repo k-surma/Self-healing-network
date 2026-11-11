@@ -33,7 +33,7 @@ def _get_last_success_time():
                     except (IndexError, ValueError):
                         continue
     except OSError as e:
-        print(f"[!] Nie mozna odczytac logu audytowego: {e}")
+        print(f"[!] Unable to read audit log: {e}")
         
     return last_success_timestamp
 
@@ -43,12 +43,12 @@ def _write_audit_event(message):
         with open(config.AUDIT_LOG_PATH, 'a', encoding='utf-8') as log_file:
             log_file.write(audit_msg)
     except OSError as error:
-        print(f"[!] Błąd zapisu logu audytowego: {error}")
+        print(f"[!] ERROR saving audit log: {error}")
 
 def execute_rollback():
     """Uruchamia playbook przywracający konfigurację początkową."""
     playbook_path = ANSIBLE_DIR / 'rollback.yml'
-    print(f"\n[*] Rozpoczynanie procedury Recovery (Rollback).")
+    print(f"\n[*] Starting Recovery procedure (Rollback).")
     
     custom_env = os.environ.copy()
     custom_env["ANSIBLE_DEPRECATION_WARNINGS"] = "False"
@@ -84,13 +84,13 @@ def execute_rollback():
         return True
 
     except (subprocess.CalledProcessError, OSError) as error:
-        print(f"[!] Procedura Recovery zakonczona bledem: {error}")
+        print(f"[!] Procedura Recovery finished with error: {error}")
         _write_audit_event(f"ACTION=RECOVERY STATUS=FAILED ERROR='{error}'")
         return False
 
 def main():
-    print("[*] Uruchomiono Recovery Manager (Tryb Auto-Teardown)")
-    print(f"[*] Czas oczekiwania po ataku: {IDLE_THRESHOLD_SECONDS} sekund")
+    print("[*] Recovery Manager launched (Mode Auto-Teardown)")
+    print(f"[*] Waiting time after the attack: {IDLE_THRESHOLD_SECONDS} seconds")
     
     while True:
         last_success = _get_last_success_time()
@@ -100,17 +100,17 @@ def main():
             idle_time = (datetime.now() - last_success).total_seconds()
             
             if idle_time >= IDLE_THRESHOLD_SECONDS:
-                print(f"\n[*] Brak nowych atakow od {int(idle_time)}s. Wyzwalam Recovery.")
+                print(f"\n[*] No new attacks since {int(idle_time)}s. Initiating Recovery.")
                 success = execute_rollback()
                 
                 if success:
                     # Zabezpieczenie: Jeśli rollback się udał, przerywamy pętlę dla PoC 
                     # i kończymy skrypt, żeby nie usunąć logów w nieskończoność.
                     # W środowisku produkcyjnym skrypt działałby dalej.
-                    print("[*] Zamykanie menedzera po udanym czyszczeniu (Tryb PoC).")
+                    print("[*] Closing the manager after successful cleanup.")
                     break
                 else:
-                    print("[!] Oczekuje na reczna interwencje po bledzie.")
+                    print("[!] Waiting for manual intervention after an error.")
                     break
                     
         time.sleep(POLL_INTERVAL)
@@ -119,4 +119,4 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print("\n[!] Menedzer Recovery zatrzymany przez uzytkownika.")
+        print("\n[!] Recovery Manager interrupted by the user.")
