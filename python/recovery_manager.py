@@ -79,12 +79,12 @@ def execute_rollback():
         if return_code != 0:
             raise subprocess.CalledProcessError(return_code, process.args)
 
-        print(f"[+] Recovery zakonczone sukcesem. Srodowisko wyczyszczone.")
+        print(f"[+] Recovery finished. Environment cleaned up.")
         _write_audit_event("ACTION=RECOVERY STATUS=SUCCESS INFO='System restored to baseline'")
         return True
 
     except (subprocess.CalledProcessError, OSError) as error:
-        print(f"[!] Procedura Recovery finished with error: {error}")
+        print(f"[!] Recovery procedure finished with error: {error}")
         _write_audit_event(f"ACTION=RECOVERY STATUS=FAILED ERROR='{error}'")
         return False
 
