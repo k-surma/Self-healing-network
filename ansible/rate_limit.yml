@@ -1,9 +1,9 @@
 ---
-- name: Mitygacja Wektora 3 - limiter ingress na WAN
+- name: DOS Attack Mitigation - limiter ingress on WAN
   hosts: vyos
   gather_facts: false
   tasks:
-    - name: Ograniczenie ruchu wolumetrycznego do chronionego hosta
+    - name: Restriction of volumetric traffic to the protected host
       vyos.vyos.vyos_config:
         lines:
           - set qos policy limiter DOS-INGRESS default bandwidth '{{ rate_limit_default_bandwidth }}'
